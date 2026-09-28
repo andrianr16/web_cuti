@@ -191,18 +191,25 @@
 
             <form action="{{ route('hrd.cuti.index') }}" method="GET" class="flex items-center gap-2 mb-4">
                 <div class="relative w-full max-w-xs">
+                    <!-- Icon Kaca Pembesar Terkunci di Dalam Input -->
+                    <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                    
+                    <!-- Input Text dengan padding kiri pl-9 agar teks tidak menabrak icon -->
                     <input type="text" name="search" value="{{ request('search') }}" 
                         placeholder="Cari nama karyawan / NIP..." 
-                        class="w-full text-xs rounded-lg border-gray-300 pl-8 pr-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                    <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
+                        class="block w-full text-xs rounded-lg border-gray-300 pl-9 pr-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 </div>
-                <button type="submit" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm">
+
+                <button type="submit" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition">
                     Cari
                 </button>
+
                 @if(request('search'))
-                    <a href="{{ route('hrd.cuti.index') }}" class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-xs font-semibold">
+                    <a href="{{ route('hrd.cuti.index') }}" class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-xs font-semibold transition">
                         Reset
                     </a>
                 @endif
