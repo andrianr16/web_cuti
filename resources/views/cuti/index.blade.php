@@ -99,14 +99,35 @@
                         @enderror
                     </div>
 
-                    <!-- Alasan Cuti -->
+                    <!-- Alasan Cuti (Mandatory) -->
                     <div>
-                        <label for="alasan" class="block text-sm font-medium text-gray-700">Alasan / Keterangan Cuti</label>
-                        <textarea name="alasan" id="alasan" rows="3" required placeholder="Tuliskan alasan permohonan cuti..."
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">{{ old('alasan') }}</textarea>
+                        <label for="alasan" class="block text-sm font-semibold text-gray-700">
+                            Alasan / Keterangan Cuti <span class="text-rose-500">*</span>
+                        </label>
+                        <textarea name="alasan" id="alasan" rows="3" required
+                            placeholder="Tuliskan alasan permohonan cuti secara jelas (wajib diisi)..."
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">{{ old('alasan') }}</textarea>
                         @error('alasan')
-                            <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                            <p class="text-xs text-rose-600 mt-1">{{ $message }}</p>
                         @enderror
+                    </div>
+
+                    <!-- Input Canvas Tanda Tangan Karyawan -->
+                    <div class="mb-5">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">
+                            Tanda Tangan Pemohon (Coret di bawah ini) <span class="text-red-500">*</span>
+                        </label>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50 flex flex-col items-center">
+                            <canvas id="signature-pad" class="border border-gray-300 rounded bg-white w-full max-w-md h-40"></canvas>
+                            <div class="w-full max-w-md flex justify-between items-center mt-2">
+                                <span class="text-xs text-gray-500">Goreskan tanda tangan Anda di dalam kotak.</span>
+                                <button type="button" id="clear-signature" class="px-2.5 py-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded font-medium">
+                                    Hapus / Ulangi
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Input tersembunyi untuk menyimpan gambar tanda tangan Base64 -->
+                        <input type="hidden" name="ttd_karyawan" id="ttd_karyawan_input" required>
                     </div>
 
                     <div class="flex justify-end pt-2">
@@ -146,15 +167,36 @@
                                         {{ $cuti->alasan }}
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap">
-                                        @if($cuti->status === 'pending')
-                                            <span class="px-2.5 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full">Menunggu ACC HRD</span>
+                                        @if($cuti->status === 'pending_spv')
+                                            <span class="px-2.5 py-1 bg-amber-100 text-amber-800 text-xs font-semibold rounded-full border border-amber-200">
+                                                Menunggu ACC SPV
+                                            </span>
+                                        @elseif($cuti->status === 'pending_hrd')
+                                            <span class="px-2.5 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full border border-blue-200">
+                                                Menunggu ACC HRD
+                                            </span>
                                         @elseif($cuti->status === 'approved')
-                                            <span class="px-2.5 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">Disetujui (ACC)</span>
-                                        @else
-                                            <span class="px-2.5 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded-full">Ditolak</span>
-                                            @if($cuti->catatan_hrd)
-                                                <p class="text-xs text-red-600 mt-1">Catatan: {{ $cuti->catatan_hrd }}</p>
+                                            <span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-xs font-semibold rounded-full border border-emerald-200">
+                                                Disetujui (ACC)
+                                            </span>
+                                        @elseif($cuti->status === 'rejected_spv')
+                                            <span class="px-2.5 py-1 bg-rose-100 text-rose-800 text-xs font-semibold rounded-full border border-rose-200">
+                                                Ditolak SPV
+                                            </span>
+                                            @if($cuti->catatan_spv)
+                                                <p class="text-[11px] text-rose-600 mt-0.5">Alasan: {{ $cuti->catatan_spv }}</p>
                                             @endif
+                                        @elseif($cuti->status === 'rejected')
+                                            <span class="px-2.5 py-1 bg-rose-100 text-rose-800 text-xs font-semibold rounded-full border border-rose-200">
+                                                Ditolak HRD
+                                            </span>
+                                            @if($cuti->catatan_hrd)
+                                                <p class="text-[11px] text-rose-600 mt-0.5">Alasan: {{ $cuti->catatan_hrd }}</p>
+                                            @endif
+                                        @else
+                                            <span class="px-2.5 py-1 bg-gray-100 text-gray-800 text-xs font-semibold rounded-full">
+                                                {{ ucfirst($cuti->status) }}
+                                            </span>
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap space-x-2">
@@ -181,47 +223,84 @@
 
         </div>
     </div>
+
+    <script>
+        const inputMulai = document.getElementById('tanggal_mulai');
+        const inputSelesai = document.getElementById('tanggal_selesai');
+        const estimasiBox = document.getElementById('estimasiHariBox');
+        const totalHariText = document.getElementById('totalHariText');
+
+        function hitungHariKerja() {
+            const mulaiVal = inputMulai.value;
+            const selesaiVal = inputSelesai.value;
+
+            if (!mulaiVal || !selesaiVal) {
+                estimasiBox.classList.add('hidden');
+                return;
+            }
+
+            const start = new Date(mulaiVal);
+            const end = new Date(selesaiVal);
+
+            if (start > end) {
+                estimasiBox.classList.add('hidden');
+                return;
+            }
+
+            let hariKerja = 0;
+            let cur = new Date(start);
+
+            while (cur <= end) {
+                const dayOfWeek = cur.getDay();
+                // 0 = Minggu, 6 = Sabtu
+                if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                    hariKerja++;
+                }
+                cur.setDate(cur.getDate() + 1);
+            }
+
+            totalHariText.innerText = hariKerja;
+            estimasiBox.classList.remove('hidden');
+        }
+
+        inputMulai.addEventListener('change', hitungHariKerja);
+        inputSelesai.addEventListener('change', hitungHariKerja);
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const canvas = document.getElementById('signature-pad');
+            const signaturePad = new SignaturePad(canvas, {
+                backgroundColor: 'rgba(255, 255, 255, 0)',
+                penColor: 'rgb(0, 0, 0)'
+            });
+
+            // Sesuaikan resolusi canvas
+            function resizeCanvas() {
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                canvas.width = canvas.offsetWidth * ratio;
+                canvas.height = canvas.offsetHeight * ratio;
+                canvas.getContext("2d").scale(ratio, ratio);
+                signaturePad.clear();
+            }
+            window.addEventListener("resize", resizeCanvas);
+            resizeCanvas();
+
+            document.getElementById('clear-signature').addEventListener('click', function () {
+                signaturePad.clear();
+            });
+
+            // Simpan tanda tangan saat form dikirim
+            const form = canvas.closest('form');
+            form.addEventListener('submit', function (e) {
+                if (signaturePad.isEmpty()) {
+                    e.preventDefault();
+                    alert('Silakan bubuhkan tanda tangan pemohon terlebih dahulu!');
+                    return false;
+                }
+                document.getElementById('ttd_karyawan_input').value = signaturePad.toDataURL('image/png');
+            });
+        });
+    </script>
 </x-app-layout>
 
-<script>
-    const inputMulai = document.getElementById('tanggal_mulai');
-    const inputSelesai = document.getElementById('tanggal_selesai');
-    const estimasiBox = document.getElementById('estimasiHariBox');
-    const totalHariText = document.getElementById('totalHariText');
-
-    function hitungHariKerja() {
-        const mulaiVal = inputMulai.value;
-        const selesaiVal = inputSelesai.value;
-
-        if (!mulaiVal || !selesaiVal) {
-            estimasiBox.classList.add('hidden');
-            return;
-        }
-
-        const start = new Date(mulaiVal);
-        const end = new Date(selesaiVal);
-
-        if (start > end) {
-            estimasiBox.classList.add('hidden');
-            return;
-        }
-
-        let hariKerja = 0;
-        let cur = new Date(start);
-
-        while (cur <= end) {
-            const dayOfWeek = cur.getDay();
-            // 0 = Minggu, 6 = Sabtu
-            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-                hariKerja++;
-            }
-            cur.setDate(cur.getDate() + 1);
-        }
-
-        totalHariText.innerText = hariKerja;
-        estimasiBox.classList.remove('hidden');
-    }
-
-    inputMulai.addEventListener('change', hitungHariKerja);
-    inputSelesai.addEventListener('change', hitungHariKerja);
-</script>

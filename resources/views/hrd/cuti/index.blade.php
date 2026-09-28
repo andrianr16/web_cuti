@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Panel HRD - Peninjauan Pengajuan Cuti') }}
+        <h2 class="font-bold text-xl text-gray-800 leading-tight">
+            {{ __('Persetujuan Cuti Karyawan (HRD)') }}
         </h2>
     </x-slot>
 
@@ -88,94 +88,125 @@
                 </form>
             </div>
 
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                <h3 class="text-lg font-bold text-gray-900 mb-4">Daftar Permohonan Cuti Karyawan</h3>
+            <!-- 1. TABEL PERMOHONAN MASUK MENUNGGU HRD -->
+            <div class="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+                <div class="flex items-center justify-between border-b pb-3 mb-4">
+                    <h3 class="text-sm font-bold text-gray-800 flex items-center gap-2">
+                        📋 Permohonan Masuk Menunggu Persetujuan HRD
+                        <span class="bg-blue-100 text-blue-800 text-[11px] px-2 py-0.5 rounded-full font-bold">
+                            {{ $pengajuanCuti->count() }} Permohonan
+                        </span>
+                    </h3>
+                </div>
 
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead class="bg-gray-50">
+                    <table class="w-full divide-y divide-gray-200 text-xs">
+                        <thead class="bg-gray-50 text-gray-600 uppercase font-semibold text-[11px]">
                             <tr>
-                                <th class="px-4 py-3 text-left font-semibold text-gray-600">Karyawan</th>
-                                <th class="px-4 py-3 text-left font-semibold text-gray-600">Sisa Cuti</th>
-                                <th class="px-4 py-3 text-left font-semibold text-gray-600">Periode Cuti</th>
-                                <th class="px-4 py-3 text-left font-semibold text-gray-600">Alasan</th>
-                                <th class="px-4 py-3 text-left font-semibold text-gray-600">Status</th>
-                                <th class="px-4 py-3 text-center font-semibold text-gray-600">Tindakan HRD</th>
+                                <th class="py-2.5 px-3 text-left">Pegawai</th>
+                                <th class="py-2.5 px-3 text-center">Sisa Cuti</th>
+                                <th class="py-2.5 px-3 text-left">Periode Cuti</th>
+                                <th class="py-2.5 px-3 text-left">Alasan</th>
+                                <th class="py-2.5 px-3 text-center">TTD Pegawai</th>
+                                <th class="py-2.5 px-3 text-center">Persetujuan SPV</th>
+                                <th class="py-2.5 px-3 text-center w-48">Aksi HRD</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             @forelse($pengajuanCuti as $cuti)
                                 <tr class="hover:bg-gray-50">
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <div class="font-bold text-gray-900">{{ $cuti->user->name }}</div>
-                                        <div class="text-xs text-gray-500">NIP: {{ $cuti->user->nip ?? '-' }} | {{ $cuti->user->divisi ?? '-' }}</div>
+                                    <td class="py-2.5 px-3">
+                                        <div class="font-bold text-gray-900">{{ $cuti->user->name ?? '-' }}</div>
+                                        <div class="text-[11px] text-gray-500">NIP: {{ $cuti->user->nip ?? '-' }} | {{ $cuti->user->divisi ?? '-' }}</div>
                                     </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <span class="font-semibold text-blue-600">{{ $cuti->user->sisa_cuti }} Hari</span>
+                                    <td class="py-2.5 px-3 text-center">
+                                        <span class="font-bold text-blue-600">{{ $cuti->user->sisa_cuti }} Hari</span>
                                     </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <div>{{ \Carbon\Carbon::parse($cuti->tanggal_mulai)->format('d/m/Y') }} s/d {{ \Carbon\Carbon::parse($cuti->tanggal_selesai)->format('d/m/Y') }}</div>
-                                        <div class="text-xs font-semibold text-gray-700">{{ $cuti->jumlah_hari }} Hari Kerja</div>
+                                    <td class="py-2.5 px-3 whitespace-nowrap">
+                                        <div>{{ \Carbon\Carbon::parse($cuti->tanggal_mulai)->format('d/m/Y') }} s.d {{ \Carbon\Carbon::parse($cuti->tanggal_selesai)->format('d/m/Y') }}</div>
+                                        <div class="text-[11px] font-semibold text-gray-700">{{ $cuti->jumlah_hari }} Hari Kerja</div>
                                     </td>
-                                    <td class="px-4 py-3 text-gray-700 max-w-xs">
-                                        <div onclick="showDetailModal({{ json_encode($cuti) }}, {{ json_encode($cuti->user) }})" 
-                                            class="cursor-pointer group">
-                                            <p class="truncate text-gray-900 font-medium group-hover:text-blue-600 transition" title="Klik untuk lihat detail">
-                                                {{ $cuti->alasan }}
-                                            </p>
-                                            <span class="inline-flex items-center gap-1 text-[11px] text-blue-600 font-semibold group-hover:underline mt-0.5">
-                                                Lihat detail alasan &rarr;
-                                            </span>
-                                        </div>
-                                        <div class="text-[11px] text-gray-500 mt-1">Kontak: {{ $cuti->kontak_darurat }}</div>
+                                    <td class="py-2.5 px-3 text-gray-700 max-w-[180px] truncate" title="{{ $cuti->alasan }}">
+                                        {{ $cuti->alasan }}
                                     </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        @if($cuti->status === 'pending')
-                                            <span class="px-2.5 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full">Menunggu ACC</span>
-                                        @elseif($cuti->status === 'approved')
-                                            <span class="px-2.5 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">Disetujui</span>
-                                            <div class="text-[10px] text-gray-500 mt-1 font-mono">{{ $cuti->nomor_surat }}</div>
+                                    <td class="py-2.5 px-3 text-center">
+                                        @if(!empty($cuti->ttd_karyawan))
+                                            <img src="{{ $cuti->ttd_karyawan }}" alt="TTD" class="h-7 mx-auto border border-gray-200 rounded bg-white px-1 py-0.5 object-contain">
                                         @else
-                                            <span class="px-2.5 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded-full">Ditolak</span>
+                                            <span class="text-gray-400 italic text-[10px]">-</span>
                                         @endif
                                     </td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-center">
-                                        @if($cuti->status === 'pending')
-                                            <div class="flex items-center justify-center space-x-2">
-                                                <!-- Form ACC -->
-                                                <form action="{{ route('hrd.cuti.approve', $cuti->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin menyetujui pengajuan cuti ini?');">
-                                                    @csrf
-                                                    <button type="submit" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded shadow">
-                                                        ACC
-                                                    </button>
-                                                </form>
-
-                                                <!-- Form Tolak Modal/Prompt -->
-                                                <button type="button" onclick="showRejectModal('{{ $cuti->id }}', '{{ $cuti->user->name }}')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded shadow">
-                                                    Tolak
+                                    <td class="py-2.5 px-3 text-center whitespace-nowrap">
+                                        <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold rounded">
+                                            ✓ ACC SPV
+                                        </span>
+                                        <div class="text-[10px] text-gray-500 mt-0.5">{{ $cuti->spv->name ?? 'Supervisor' }}</div>
+                                    </td>
+                                    <td class="py-2.5 px-3 text-center">
+                                        <div class="flex items-center justify-center gap-1.5" id="btn-group-{{ $cuti->id }}">
+                                            <!-- Tombol ACC -->
+                                            <form action="{{ route('hrd.cuti.approve', $cuti->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin menyetujui pengajuan cuti ini? Kuota cuti akan dipotong.');">
+                                                @csrf
+                                                <button type="submit" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded text-xs shadow-sm">
+                                                    ✓ ACC
                                                 </button>
-                                            </div>
-                                        @else
-                                            <span class="text-xs text-gray-400 italic">Sudah diproses</span>
-                                        @endif
+                                            </form>
+
+                                            <!-- Tombol Tolak -->
+                                            <button type="button" onclick="openHrdReject('{{ $cuti->id }}')" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded text-xs shadow-sm">
+                                                ✕ Tolak
+                                            </button>
+                                        </div>
+
+                                        <!-- Form Input Alasan Tolak (Ramping & Dropdown) -->
+                                        <div id="hrd-reject-box-{{ $cuti->id }}" class="hidden mt-2 p-2 bg-red-50 border border-red-200 rounded text-left">
+                                            <form action="{{ route('hrd.cuti.reject', $cuti->id) }}" method="POST">
+                                                @csrf
+                                                <input type="text" name="catatan_hrd" required placeholder="Alasan penolakan HRD..." 
+                                                    class="w-full text-xs rounded border-gray-300 py-1 px-2 mb-1.5 focus:border-red-500 focus:ring-red-500">
+                                                <div class="flex justify-end gap-1">
+                                                    <button type="button" onclick="closeHrdReject('{{ $cuti->id }}')" class="px-2 py-0.5 text-[11px] bg-gray-200 hover:bg-gray-300 text-gray-700 rounded">
+                                                        Batal
+                                                    </button>
+                                                    <button type="submit" class="px-2 py-0.5 text-[11px] bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded">
+                                                        Konfirmasi Tolak
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-4 py-6 text-center text-gray-500">
-                                        Belum ada pengajuan cuti yang masuk.
+                                    <td colspan="7" class="py-6 text-center text-gray-400 text-xs">
+                                        Tidak ada pengajuan cuti yang menunggu peninjauan HRD.
                                     </td>
                                 </tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
-
-                <div class="mt-4">
-                    {{ $pengajuanCuti->links() }}
-                </div>
             </div>
 
+
+            <form action="{{ route('hrd.cuti.index') }}" method="GET" class="flex items-center gap-2 mb-4">
+                <div class="relative w-full max-w-xs">
+                    <input type="text" name="search" value="{{ request('search') }}" 
+                        placeholder="Cari nama karyawan / NIP..." 
+                        class="w-full text-xs rounded-lg border-gray-300 pl-8 pr-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </div>
+                <button type="submit" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm">
+                    Cari
+                </button>
+                @if(request('search'))
+                    <a href="{{ route('hrd.cuti.index') }}" class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-xs font-semibold">
+                        Reset
+                    </a>
+                @endif
+            </form>
         </div>
     </div>
 
@@ -260,6 +291,95 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- 2. TABEL RIWAYAT PERMOHONAN CUTI (ACC / TOLAK) -->
+    <div class="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+        <div class="border-b pb-3 mb-4">
+            <h3 class="text-sm font-bold text-gray-800 flex items-center gap-2">
+                📑 Riwayat Keputusan Cuti (Disetujui & Ditolak)
+            </h3>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full divide-y divide-gray-200 text-xs">
+                <thead class="bg-gray-50 text-gray-600 uppercase font-semibold text-[11px]">
+                    <tr>
+                        <th class="py-2.5 px-3 text-left">Pegawai</th>
+                        <th class="py-2.5 px-3 text-left">Periode Cuti</th>
+                        <th class="py-2.5 px-2 text-center">Durasi</th>
+                        <th class="py-2.5 px-3 text-left">Alasan Pengajuan</th>
+                        <th class="py-2.5 px-3 text-center">Status Keputusan</th>
+                        <th class="py-2.5 px-3 text-left">Catatan / Keterangan</th>
+                        <th class="py-2.5 px-3 text-center">No. Surat / Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @forelse($riwayatCuti as $riwayat)
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-2.5 px-3">
+                                <div class="font-bold text-gray-900">{{ $riwayat->user->name ?? '-' }}</div>
+                                <div class="text-[11px] text-gray-500">NIP: {{ $riwayat->user->nip ?? '-' }}</div>
+                            </td>
+                            <td class="py-2.5 px-3 whitespace-nowrap text-gray-700">
+                                {{ \Carbon\Carbon::parse($riwayat->tanggal_mulai)->format('d/m/Y') }} s.d {{ \Carbon\Carbon::parse($riwayat->tanggal_selesai)->format('d/m/Y') }}
+                            </td>
+                            <td class="py-2.5 px-2 text-center font-semibold text-blue-600">
+                                {{ $riwayat->jumlah_hari }} Hari
+                            </td>
+                            <td class="py-2.5 px-3 text-gray-600 max-w-[150px] truncate" title="{{ $riwayat->alasan }}">
+                                {{ $riwayat->alasan }}
+                            </td>
+                            <td class="py-2.5 px-3 text-center whitespace-nowrap">
+                                @if($riwayat->status === 'approved')
+                                    <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded-full text-[10px]">
+                                        ✓ Disetujui HRD
+                                    </span>
+                                @elseif($riwayat->status === 'rejected')
+                                    <span class="px-2 py-0.5 bg-rose-100 text-rose-800 font-bold rounded-full text-[10px]">
+                                        ✕ Ditolak HRD
+                                    </span>
+                                @elseif($riwayat->status === 'rejected_spv')
+                                    <span class="px-2 py-0.5 bg-amber-100 text-amber-800 font-bold rounded-full text-[10px]">
+                                        ✕ Ditolak SPV
+                                    </span>
+                                @endif
+                            </td>
+                            <td class="py-2.5 px-3 text-gray-600 max-w-[180px]">
+                                @if($riwayat->status === 'rejected')
+                                    <span class="text-rose-600 text-[11px]">{{ $riwayat->catatan_hrd ?? '-' }}</span>
+                                @elseif($riwayat->status === 'rejected_spv')
+                                    <span class="text-amber-700 text-[11px]">{{ $riwayat->catatan_spv ?? '-' }}</span>
+                                @else
+                                    <span class="text-emerald-700 text-[11px]">{{ $riwayat->catatan_hrd ?? 'Disetujui' }}</span>
+                                @endif
+                            </td>
+                            <td class="py-2.5 px-3 text-center whitespace-nowrap">
+                                @if($riwayat->status === 'approved')
+                                    <span class="font-mono text-[11px] font-semibold text-gray-700 block mb-1">
+                                        {{ $riwayat->nomor_surat ?? '-' }}
+                                    </span>
+                                    <a href="{{ route('cuti.pdf', $riwayat->id) }}" target="_blank" class="inline-flex items-center px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded text-[10px] font-bold">
+                                        📄 Cetak PDF
+                                    </a>
+                                @else
+                                    <span class="text-gray-400 italic text-[11px]">-</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="py-6 text-center text-gray-400 text-xs">
+                                Belum ada riwayat keputusan cuti.
+                            </td>
+                        </tr>
+                     @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-4">
+            {{ $riwayatCuti->links() }}
         </div>
     </div>
 

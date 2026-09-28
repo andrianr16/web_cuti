@@ -12,21 +12,20 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <!-- Menu Khusus Karyawan -->
-                    @if(Auth::user()->role === 'karyawan')
-                        <x-nav-link :href="route('cuti.index')" :active="request()->routeIs('cuti.*')">
-                            {{ __('Pengajuan Cuti') }}
-                        </x-nav-link>
-                    @endif
-
-                    <!-- Menu Khusus HRD -->
-                    @if(Auth::user()->role === 'hrd')
+                    @if(auth()->user()->role === 'hrd')
                         <x-nav-link :href="route('hrd.cuti.index')" :active="request()->routeIs('hrd.cuti.*')">
                             {{ __('Kelola Cuti (HRD)') }}
                         </x-nav-link>
-
                         <x-nav-link :href="route('hrd.karyawan.index')" :active="request()->routeIs('hrd.karyawan.*')">
                             {{ __('Monitoring Pabrik & Karyawan') }}
+                        </x-nav-link>
+                    @elseif(auth()->user()->role === 'supervisor')
+                        <x-nav-link :href="route('spv.cuti.index')" :active="request()->routeIs('spv.cuti.*')">
+                            {{ __('Approval Cuti (Supervisor)') }}
+                        </x-nav-link>
+                    @else
+                        <x-nav-link :href="route('cuti.index')" :active="request()->routeIs('cuti.*')">
+                            {{ __('Permohonan Cuti') }}
                         </x-nav-link>
                     @endif
                 </div>

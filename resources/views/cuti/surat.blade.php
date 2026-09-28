@@ -207,11 +207,19 @@
                 <td>Pemohon,</td>
             </tr>
             <tr>
-                <td class="ttd-space"></td>
-                <td class="ttd-space"></td>
+                <td class="ttd-space" style="vertical-align: middle;">
+                    @if($cuti->ttd_spv)
+                        <img src="{{ $cuti->ttd_spv }}" style="height: 38px; max-width: 120px;" alt="TTD Supervisor">
+                    @endif
+                </td>
+                <td class="ttd-space" style="vertical-align: middle;">
+                    @if($cuti->ttd_karyawan)
+                        <img src="{{ $cuti->ttd_karyawan }}" style="height: 38px; max-width: 120px;" alt="TTD Pemohon">
+                    @endif
+                </td>
             </tr>
             <tr>
-                <td><u>( Kepala Bagian / Supervisor )</u></td>
+                <td><u>{{ $cuti->spv->name ?? '( Kepala Bagian / Supervisor )' }}</u></td>
                 <td><u><strong>{{ $cuti->user->name }}</strong></u></td>
             </tr>
         </table>
@@ -282,19 +290,25 @@
                 <td>Personalia / HRD,</td>
             </tr>
             <tr>
-                <td class="ttd-space">
-                    @if($cuti->status === 'approved')
+                <td class="ttd-space" style="vertical-align: middle;">
+                    @if($cuti->ttd_spv)
+                        <img src="{{ $cuti->ttd_spv }}" style="height: 38px; max-width: 120px;" alt="TTD SPV">
+                    @elseif($cuti->status === 'approved')
                         <div style="color: green; font-size: 7.5pt; font-weight: bold; border: 1px dashed green; display: inline-block; padding: 2px 6px;">DISETUJUI</div>
                     @endif
                 </td>
-                <td class="ttd-space">
-                    @if($cuti->status === 'approved')
+                <td class="ttd-space" style="vertical-align: middle;">
+                    @if($cuti->ttd_hrd)
+                        <img src="{{ $cuti->ttd_hrd }}" style="height: 38px; max-width: 120px;" alt="TTD HRD">
+                    @elseif(!empty($cuti->hrd->signature_pad))
+                        <img src="{{ $cuti->hrd->signature_pad }}" style="height: 38px; max-width: 120px;" alt="TTD HRD">
+                    @elseif($cuti->status === 'approved')
                         <div style="color: green; font-size: 7.5pt; font-weight: bold; border: 1px dashed green; display: inline-block; padding: 2px 6px;">VERIFIED HRD</div>
                     @endif
                 </td>
             </tr>
             <tr>
-                <td><u>( Kepala Bagian / Supervisor )</u></td>
+                <td><u>{{ $cuti->spv->name ?? '( Kepala Bagian / Supervisor )' }}</u></td>
                 <td><u><strong>{{ $cuti->hrd->name ?? 'Bagian Personalia' }}</strong></u></td>
             </tr>
         </table>

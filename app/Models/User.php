@@ -32,6 +32,7 @@ class User extends Authenticatable
         'tgl_masuk_kerja',
         'sisa_cuti',
         'sisa_cuti_lalu',
+        'signature_pad',
     ];
 
     /**

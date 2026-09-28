@@ -28,8 +28,8 @@ class UserSeeder extends Seeder
         // 2. Akun Karyawan 1 (Budi)
         User::create([
             'nip' => 'KRY001',
-            'name' => 'Budi Santoso',
-            'email' => 'budi@perusahaan.com',
+            'name' => 'Bani Santoso',
+            'email' => 'bani@perusahaan.com',
             'password' => Hash::make('password123'),
             'role' => 'karyawan',
             'divisi' => 'Teknologi Informasi',

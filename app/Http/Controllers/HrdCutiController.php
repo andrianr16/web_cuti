@@ -18,42 +18,67 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class HrdCutiController extends Controller
 {
     // Menampilkan daftar pengajuan cuti yang masuk
-    public function index()
+    public function index(Request $request)
     {
-        $pengajuanCuti = CutiRequest::with('user')
-            ->latest()
-            ->paginate(10);
+        $search = $request->input('search');
 
-        return view('hrd.cuti.index', compact('pengajuanCuti'));
+        // 1. Query pengajuan yang menunggu ACC HRD
+        $pengajuanCuti = CutiRequest::where('status', 'pending_hrd')
+            ->when($search, function ($query) use ($search) {
+                $query->whereHas('user', function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('nip', 'like', "%{$search}%");
+                });
+            })
+            ->with(['user', 'spv'])
+            ->latest()
+            ->get();
+
+        // 2. Query riwayat keputusan cuti
+        $riwayatCuti = CutiRequest::whereIn('status', ['approved', 'rejected', 'rejected_spv'])
+            ->when($search, function ($query) use ($search) {
+                $query->whereHas('user', function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('nip', 'like', "%{$search}%")
+                    ->orWhere('nomor_surat', 'like', "%{$search}%");
+                });
+            })
+            ->with(['user', 'spv', 'hrd'])
+            ->latest()
+            ->paginate(15)
+            ->appends(['search' => $search]);
+
+        return view('hrd.cuti.index', compact('pengajuanCuti', 'riwayatCuti', 'search'));
     }
 
     // Memproses ACC / Persetujuan Cuti
     public function approve(Request $request, CutiRequest $cuti)
     {
-        if ($cuti->status !== 'pending') {
+        // Validasi status menunggu HRD
+        if ($cuti->status !== 'pending_hrd' && $cuti->status !== 'pending') {
             return back()->with('error', 'Pengajuan cuti ini sudah pernah diproses sebelumnya.');
         }
 
         $karyawan = $cuti->user;
 
-        // Validasi ketersediaan saldo cuti
+        // Validasi kuota sisa cuti
         if ($karyawan->sisa_cuti < $cuti->jumlah_hari) {
             return back()->with('error', 'Sisa kuota cuti karyawan tidak mencukupi untuk disetujui.');
         }
 
         DB::transaction(function () use ($cuti, $karyawan, $request) {
-            // 1. Kurangi sisa kuota cuti karyawan
+            // Potong saldo cuti
             $karyawan->decrement('sisa_cuti', $cuti->jumlah_hari);
 
-            // 2. Format nomor surat: CUTI/YYYYMM/000X
+            // Format nomor surat resmi
             $nomorSurat = 'CUTI/' . date('Ym') . '/' . str_pad($cuti->id, 4, '0', STR_PAD_LEFT);
 
-            // 3. Update status cuti
+            // Update status approved
             $cuti->update([
                 'status'       => 'approved',
                 'nomor_surat'  => $nomorSurat,
                 'hrd_id'       => auth()->id(),
-                'catatan_hrd'  => $request->input('catatan_hrd'),
+                'catatan_hrd'  => $request->input('catatan_hrd', 'Disetujui oleh HRD'),
                 'approved_at'  => now(),
             ]);
         });
@@ -64,15 +89,16 @@ class HrdCutiController extends Controller
     // Memproses Penolakan Cuti
     public function reject(Request $request, CutiRequest $cuti)
     {
+        // PERBAIKAN: Ubah validasi agar menerima status 'pending_hrd'
+        if ($cuti->status !== 'pending_hrd' && $cuti->status !== 'pending') {
+            return back()->with('error', 'Pengajuan cuti ini sudah pernah diproses sebelumnya.');
+        }
+
         $request->validate([
             'catatan_hrd' => 'required|string|max:500',
         ], [
             'catatan_hrd.required' => 'Wajib memberikan alasan atau catatan penolakan.',
         ]);
-
-        if ($cuti->status !== 'pending') {
-            return back()->with('error', 'Pengajuan cuti ini sudah pernah diproses sebelumnya.');
-        }
 
         $cuti->update([
             'status'      => 'rejected',
@@ -465,5 +491,17 @@ class HrdCutiController extends Controller
         $fileName = 'Rekap_Permohonan_Cuti_' . $namaPabrik . $namaPeriode . '_' . date('His') . '.xlsx';
 
         return Excel::download(new RekapCutiExport($status, $pabrik, $tahun, $bulan), $fileName);
+    }
+
+    public function riwayatKaryawan(User $user)
+    {
+        $riwayat = CutiRequest::where('user_id', $user->id)
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'user'    => $user,
+            'riwayat' => $riwayat,
+        ]);
     }
 }

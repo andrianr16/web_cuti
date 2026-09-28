@@ -232,7 +232,12 @@
                                 @foreach($listKaryawan as $karyawan)
                                     <tr class="hover:bg-blue-50/30 transition">
                                         <td class="px-4 py-3 font-mono text-gray-500 font-semibold">{{ $karyawan->nip ?? '-' }}</td>
-                                        <td class="px-4 py-3 font-semibold text-gray-900">{{ $karyawan->name }}</td>
+                                        <td class="px-3 py-2">
+                                            <button type="button" onclick="showRiwayatModal('{{ $karyawan->id }}')" 
+                                                    class="font-bold text-blue-600 hover:text-blue-800 hover:underline text-left">
+                                                {{ $karyawan->name }}
+                                            </button>
+                                        </td>
                                         <td class="px-4 py-3 text-gray-700 font-medium">
                                             <span class="px-2 py-0.5 bg-gray-100 text-gray-700 text-[11px] rounded border border-gray-200">
                                                 {{ $karyawan->divisi ?? '-' }}
@@ -286,10 +291,66 @@
         </div>
     </div>
 
-    {{-- Script Ekspor --}}
+    <!-- Modal Riwayat Cuti Karyawan -->
+    <div id="modalRiwayatKaryawan" class="fixed inset-0 bg-gray-900/60 backdrop-blur-xs hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden border border-gray-100 flex flex-col max-h-[85vh]">
+            <!-- Header Modal -->
+            <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm font-bold tracking-wide uppercase" id="mNamaKaryawan">-</h3>
+                    <p class="text-[11px] text-slate-300" id="mInfoKaryawan">-</p>
+                </div>
+                <button type="button" onclick="closeRiwayatModal()" class="text-slate-400 hover:text-white text-xl font-bold">&times;</button>
+            </div>
+
+            <!-- Badan Modal (Tabel Riwayat) -->
+            <div class="p-6 overflow-y-auto space-y-4">
+                <div class="grid grid-cols-2 gap-3 bg-gray-50 p-3 rounded-lg border text-xs">
+                    <div>
+                        <span class="text-gray-400 block text-[10px] uppercase font-bold">Sisa Hak Cuti Saat Ini</span>
+                        <strong class="text-blue-600 text-sm" id="mSisaCuti">-</strong>
+                    </div>
+                    <div>
+                        <span class="text-gray-400 block text-[10px] uppercase font-bold">Pabrik & Kategori</span>
+                        <strong class="text-gray-800 text-sm uppercase" id="mPabrikKategori">-</strong>
+                    </div>
+                </div>
+
+                <h4 class="text-xs font-bold text-gray-700 uppercase tracking-wide">Daftar Pengajuan Cuti:</h4>
+                
+                <div class="overflow-x-auto border rounded-lg">
+                    <table class="w-full text-xs text-left divide-y divide-gray-200">
+                        <thead class="bg-gray-50 text-gray-600 text-[10px] uppercase">
+                            <tr>
+                                <th class="py-2 px-3">Periode Cuti</th>
+                                <th class="py-2 px-2 text-center">Durasi</th>
+                                <th class="py-2 px-3">Alasan</th>
+                                <th class="py-2 px-3 text-center">Status</th>
+                                <th class="py-2 px-3">Catatan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mListRiwayat" class="divide-y divide-gray-100 text-[11px]">
+                            <!-- Baris tabel diisi otomatis oleh Javascript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Footer Modal -->
+            <div class="px-6 py-3 bg-gray-50 border-t flex justify-end">
+                <button type="button" onclick="closeRiwayatModal()" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @push('scripts')
     <script>
         function triggerExport(type) {
-            const pabrik = document.getElementById('select_export_pabrik').value;
+            const select = document.getElementById('select_export_pabrik');
+            if (!select) return;
+            const pabrik = select.value;
             let url = '';
 
             if (type === 'csv') {
@@ -302,5 +363,78 @@
                 window.location.href = url;
             }
         }
+
+        function showRiwayatModal(userId) {
+            console.log("Membuka modal untuk user ID:", userId); // Untuk cek di Console browser
+            const modal = document.getElementById('modalRiwayatKaryawan');
+            const tbody = document.getElementById('mListRiwayat');
+            
+            if (!modal || !tbody) {
+                alert("Elemen modal tidak ditemukan di halaman!");
+                return;
+            }
+
+            tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-400">Memuat data...</td></tr>';
+            modal.classList.remove('hidden');
+
+            fetch(`/hrd/karyawan/${userId}/riwayat`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error("Gagal mengambil data dari server (Status " + res.status + ")");
+                }
+                return res.json();
+            })
+            .then(data => {
+                const u = data.user;
+                document.getElementById('mNamaKaryawan').innerText = u.name;
+                document.getElementById('mInfoKaryawan').innerText = `NIP: ${u.nip || '-'} | Divisi: ${u.divisi || '-'} | Jabatan: ${u.jabatan || '-'}`;
+                document.getElementById('mSisaCuti').innerText = `${u.sisa_cuti} Hari Kerja`;
+                document.getElementById('mPabrikKategori').innerText = `${u.pabrik || '-'} (${u.kategori || '-'})`;
+
+                if (!data.riwayat || data.riwayat.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-400">Belum ada permohonan cuti yang diajukan.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.riwayat.map(item => {
+                    let badgeStatus = '';
+                    if (item.status === 'approved') {
+                        badgeStatus = '<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded-full text-[10px]">Disetujui</span>';
+                    } else if (item.status === 'rejected') {
+                        badgeStatus = '<span class="px-2 py-0.5 bg-rose-100 text-rose-800 font-bold rounded-full text-[10px]">Ditolak HRD</span>';
+                    } else if (item.status === 'rejected_spv') {
+                        badgeStatus = '<span class="px-2 py-0.5 bg-amber-100 text-amber-800 font-bold rounded-full text-[10px]">Ditolak SPV</span>';
+                    } else {
+                        badgeStatus = '<span class="px-2 py-0.5 bg-blue-100 text-blue-800 font-bold rounded-full text-[10px]">Proses Menunggu</span>';
+                    }
+
+                    const catatan = item.catatan_hrd || item.catatan_spv || '-';
+
+                    return `
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-2 px-3 whitespace-nowrap">${item.tanggal_mulai} s.d ${item.tanggal_selesai}</td>
+                            <td class="py-2 px-2 text-center font-bold text-blue-600">${item.jumlah_hari} Hari</td>
+                            <td class="py-2 px-3 max-w-[150px] truncate" title="${item.alasan}">${item.alasan}</td>
+                            <td class="py-2 px-3 text-center whitespace-nowrap">${badgeStatus}</td>
+                            <td class="py-2 px-3 text-gray-500 italic max-w-[150px] truncate" title="${catatan}">${catatan}</td>
+                        </tr>
+                    `;
+                }).join('');
+            })
+            .catch(err => {
+                console.error(err);
+                tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-red-500">${err.message}</td></tr>`;
+            });
+        }
+
+        function closeRiwayatModal() {
+            document.getElementById('modalRiwayatKaryawan').classList.add('hidden');
+        }
     </script>
+    @endpush
 </x-app-layout>

@@ -46,6 +46,47 @@
                 </div>
             @endif
         </div>
+        
+        <!-- ===== TAMBAHKAN BAGIAN TTD DIGITAL PROFIL DI SINI ===== -->
+        @if(in_array(auth()->user()->role, ['hrd', 'supervisor']))
+            <div class="pt-2 border-t mt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Tanda Tangan Digital Resmi</label>
+                
+                @if(auth()->user()->signature_pad)
+                    <div class="mb-2">
+                        <span class="text-xs text-gray-500">Tanda tangan yang sedang aktif:</span><br>
+                        <img src="{{ auth()->user()->signature_pad }}" alt="TTD Aktif" class="h-16 border rounded bg-white p-1 mt-1">
+                    </div>
+                @endif
+
+                <div class="border rounded-lg p-2 bg-gray-50 inline-block">
+                    <canvas id="profile-sig-pad" class="border rounded bg-white w-64 h-28"></canvas>
+                    <div class="mt-1">
+                        <button type="button" id="clear-profile-sig" class="text-xs text-red-600 underline">Bersihkan</button>
+                    </div>
+                </div>
+                <input type="hidden" name="signature_pad" id="profile_sig_input">
+            </div>
+
+            <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    const canvas = document.getElementById('profile-sig-pad');
+                    if (!canvas) return;
+                    const pad = new SignaturePad(canvas, { backgroundColor: 'rgba(255, 255, 255, 0)', penColor: 'rgb(0,0,0)' });
+                    
+                    document.getElementById('clear-profile-sig').addEventListener('click', () => pad.clear());
+                    
+                    const form = canvas.closest('form');
+                    form.addEventListener('submit', function () {
+                        if (!pad.isEmpty()) {
+                            document.getElementById('profile_sig_input').value = pad.toDataURL('image/png');
+                        }
+                    });
+                });
+            </script>
+        @endif
+        <!-- ======================================================= -->
 
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>

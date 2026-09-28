@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CutiRequest;
+use App\Models\Holiday;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -21,82 +22,88 @@ class CutiController extends Controller
         return view('cuti.index', compact('user', 'riwayatCuti'));
     }
 
-    // Memproses simpan pengajuan cuti
     public function store(Request $request)
     {
         $user = auth()->user();
 
+        // 1. Validasi Input: Alasan dibuat MANDATORY (Wajib diisi & minimal 5 karakter)
         $request->validate([
             'tanggal_mulai'   => 'required|date|after_or_equal:today',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'alasan'          => 'required|string|min:5|max:500',
             'kontak_darurat'  => 'required|string|max:50',
+            'ttd_karyawan'    => 'required|string',
         ], [
-            'tanggal_mulai.after_or_equal'   => 'Tanggal mulai cuti minimal hari ini.',
-            'tanggal_selesai.after_or_equal' => 'Tanggal selesai tidak boleh sebelum tanggal mulai.',
-            'alasan.min'                     => 'Alasan cuti minimal 5 karakter.',
+            'alasan.required' => 'Alasan cuti wajib diisi (tidak boleh kosong).',
+            'alasan.min'      => 'Alasan cuti terlalu pendek, minimal 5 karakter.',
+            'ttd_karyawan.required' => 'Tanda tangan digital wajib dicantumkan.',
         ]);
 
-        $tglMulai = $request->tanggal_mulai;
-        $tglSelesai = $request->tanggal_selesai;
+        $mulai = Carbon::parse($request->tanggal_mulai);
+        $selesai = Carbon::parse($request->tanggal_selesai);
 
-        // 1. Cek Tanggal Bentrok (Overlapping) dengan pengajuan aktif sebelumnya
-        $cekBentrok = CutiRequest::where('user_id', $user->id)
-            ->whereIn('status', ['pending', 'approved'])
-            ->where(function ($query) use ($tglMulai, $tglSelesai) {
-                $query->whereBetween('tanggal_mulai', [$tglMulai, $tglSelesai])
-                    ->orWhereBetween('tanggal_selesai', [$tglMulai, $tglSelesai])
-                    ->orWhere(function ($sub) use ($tglMulai, $tglSelesai) {
-                        $sub->where('tanggal_mulai', '<=', $tglMulai)
-                            ->where('tanggal_selesai', '>=', $tglSelesai);
-                    });
-            })
-            ->exists();
+        // Ambil daftar hari libur resmi pada rentang tanggal yang diajukan
+        $daftarLibur = Holiday::whereBetween('tanggal', [$mulai->toDateString(), $selesai->toDateString()])
+            ->get()
+            ->keyBy('tanggal');
 
-        if ($cekBentrok) {
-            return back()
-                ->withInput()
-                ->with('error', 'Tanggal yang Anda pilih bertabrakan dengan pengajuan cuti Anda yang lain (status pending/disetujui).');
-        }
+        $jumlahHari = 0;
+        $period = CarbonPeriod::create($mulai, $selesai);
 
-        // 2. Hitung Hanya Hari Kerja (Skip Sabtu & Minggu)
-        $periode = CarbonPeriod::create($tglMulai, $tglSelesai);
-        $jumlahHariKerja = 0;
+        foreach ($period as $date) {
+            $tglStr = $date->toDateString();
 
-        foreach ($periode as $date) {
-            // Lewati Sabtu (isSaturday) dan Minggu (isSunday)
-            if (! $date->isWeekend()) {
-                $jumlahHariKerja++;
+            // Abaikan akhir pekan (Sabtu & Minggu)
+            if ($date->isWeekend()) {
+                continue;
             }
+
+            // Cek apakah tanggal ini terdaftar di kalender libur
+            if ($daftarLibur->has($tglStr)) {
+                $libur = $daftarLibur->get($tglStr);
+
+                // Tanggal merah / Libur nasional: Tidak memotong jatah cuti tahunan
+                if ($libur->jenis === 'libur_nasional') {
+                    continue;
+                }
+
+                // Cuti bersama: Tetap dihitung memotong kuota cuti tahunan
+                if ($libur->jenis === 'cuti_bersama') {
+                    $jumlahHari++;
+                    continue;
+                }
+            }
+
+            // Hari kerja biasa
+            $jumlahHari++;
         }
 
-        // Jika karyawan hanya memilih hari Sabtu/Minggu
-        if ($jumlahHariKerja === 0) {
+        if ($jumlahHari === 0) {
             return back()
                 ->withInput()
-                ->with('error', 'Rentang tanggal yang Anda pilih hanya terdiri dari akhir pekan (Sabtu/Minggu).');
+                ->with('error', 'Rentang tanggal yang Anda pilih seluruhnya adalah hari libur atau akhir pekan. Tidak ada hari kerja yang dipotong.');
         }
 
-        // 3. Validasi Kuota Cuti Karyawan
-        if ($user->sisa_cuti < $jumlahHariKerja) {
+        // Validasi kuota sisa cuti karyawan
+        if ($user->sisa_cuti < $jumlahHari) {
             return back()
                 ->withInput()
-                ->with('error', "Sisa cuti Anda tidak mencukupi! Pengajuan ini membutuhkan {$jumlahHariKerja} hari kerja, sisa cuti Anda hanya {$user->sisa_cuti} hari.");
+                ->with('error', "Sisa cuti Anda tidak mencukupi! Anda mengajukan {$jumlahHari} hari kerja (termasuk cuti bersama), sisa cuti Anda {$user->sisa_cuti} hari.");
         }
 
-        // 4. Simpan Pengajuan Cuti
+        // Simpan pengajuan (masuk antrean Supervisor terlebih dahulu)
         CutiRequest::create([
             'user_id'         => $user->id,
-            'tanggal_mulai'   => $tglMulai,
-            'tanggal_selesai' => $tglSelesai,
-            'jumlah_hari'     => $jumlahHariKerja,
+            'tanggal_mulai'   => $request->tanggal_mulai,
+            'tanggal_selesai' => $request->tanggal_selesai,
+            'jumlah_hari'     => $jumlahHari,
             'alasan'          => $request->alasan,
             'kontak_darurat'  => $request->kontak_darurat,
-            'status'          => 'pending',
+            'ttd_karyawan'    => $request->ttd_karyawan,
+            'status'          => 'pending_spv',
         ]);
 
-        return redirect()->route('cuti.index')
-            ->with('success', "Permohonan cuti sebanyak {$jumlahHariKerja} hari kerja berhasil dikirim ke HRD!");
+        return redirect()->route('cuti.index')->with('success', "Permohonan cuti sebanyak {$jumlahHari} hari kerja berhasil dikirim ke Supervisor!");
     }
 
     // Menampilkan halaman preview cetak di browser

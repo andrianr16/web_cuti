@@ -31,10 +31,10 @@ class DatabaseSeeder extends Seeder
 
         // 2. Akun Karyawan 1 (Budi - Pabrik Joya)
         User::firstOrCreate(
-            ['email' => 'budi@perusahaan.com'],
+            ['email' => 'bani@perusahaan.com'],
             [
                 'nip' => 'KRY001',
-                'name' => 'Budi Santoso',
+                'name' => 'Bani Santoso',
                 'password' => Hash::make('password123'),
                 'role' => 'karyawan',
                 'pabrik' => 'joya',
@@ -60,6 +60,22 @@ class DatabaseSeeder extends Seeder
                 'jabatan' => 'Operator Produksi',
                 'sisa_cuti' => 12,
                 'tgl_masuk_kerja' => '2023-05-10',
+            ]
+        );
+
+        // Akun Supervisor (IT)
+        User::firstOrCreate(
+            ['email' => 'spv@perusahaan.com'],
+            [
+                'nip' => 'SPV001',
+                'name' => 'Agus Supervisor',
+                'password' => Hash::make('password123'),
+                'role' => 'supervisor',
+                'pabrik' => 'joya',
+                'kategori' => 'staff',
+                'divisi' => 'IT',
+                'jabatan' => 'Supervisor IT',
+                'sisa_cuti' => 12,
             ]
         );
     }
