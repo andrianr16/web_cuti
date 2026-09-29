@@ -93,14 +93,15 @@ class CutiController extends Controller
 
         // Simpan pengajuan (masuk antrean Supervisor terlebih dahulu)
         CutiRequest::create([
-            'user_id'         => $user->id,
-            'tanggal_mulai'   => $request->tanggal_mulai,
-            'tanggal_selesai' => $request->tanggal_selesai,
-            'jumlah_hari'     => $jumlahHari,
-            'alasan'          => $request->alasan,
-            'kontak_darurat'  => $request->kontak_darurat,
-            'ttd_karyawan'    => $request->ttd_karyawan,
-            'status'          => 'pending_spv',
+            'user_id'           => $user->id,
+            'tanggal_mulai'     => $request->tanggal_mulai,
+            'tanggal_selesai'   => $request->tanggal_selesai,
+            'jumlah_hari'       => $jumlahHari,
+            'alasan'            => $request->alasan,
+            'alamat_cuti'       => $request->alamat_cuti,
+            'kontak_darurat'    => $request->kontak_darurat,
+            'ttd_karyawan'      => $request->ttd_karyawan,
+            'status'            => 'pending_spv',
         ]);
 
         return redirect()->route('cuti.index')->with('success', "Permohonan cuti sebanyak {$jumlahHari} hari kerja berhasil dikirim ke Supervisor!");

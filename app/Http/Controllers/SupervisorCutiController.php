@@ -12,10 +12,16 @@ class SupervisorCutiController extends Controller
     {
         $user = auth()->user();
 
-        // SPV melihat pengajuan dari divisi yang sama dan berstatus 'pending_spv'
-        $pengajuanCuti = CutiRequest::where('status', 'pending_spv')->with('user')->latest()->get();
+        // Pastikan SPV hanya menarik permohonan dari karyawan yang divisinya sama persis
+        $pengajuanCuti = CutiRequest::where('status', 'pending_spv')
+            ->whereHas('user', function ($query) use ($user) {
+                $query->where('divisi', $user->divisi);
+            })
+            ->with('user')
+            ->latest()
+            ->get();
 
-        // Riwayat permohonan yang sudah pernah diproses oleh SPV ini
+        // Riwayat keputusan yang pernah diproses oleh SPV ini
         $riwayatSpv = CutiRequest::where('spv_id', $user->id)
             ->with('user')
             ->latest()
@@ -28,18 +34,21 @@ class SupervisorCutiController extends Controller
     // Aksi ACC oleh Supervisor
     public function approve(Request $request, CutiRequest $cuti)
     {
+        $spv = auth()->user();
+
+        // Validasi: Cegah SPV memproses permohonan dari divisi lain
+        if ($cuti->user->divisi !== $spv->divisi) {
+            return back()->with('error', 'Anda tidak memiliki hak akses untuk memproses permohonan dari divisi lain.');
+        }
+
         if ($cuti->status !== 'pending_spv') {
             return back()->with('error', 'Permohonan sudah tidak dalam status menunggu Supervisor.');
         }
 
-        $spv = auth()->user();
-
-        // Validasi tanda tangan profil SPV
         if (empty($spv->signature_pad)) {
             return back()->with('error', 'Anda belum mengatur tanda tangan digital di menu Profil! Silakan isi terlebih dahulu.');
         }
 
-        // Teruskan ke HRD
         $cuti->update([
             'status'          => 'pending_hrd',
             'spv_id'          => $spv->id,
@@ -51,9 +60,15 @@ class SupervisorCutiController extends Controller
         return back()->with('success', 'Permohonan cuti disetujui dan diteruskan ke HRD!');
     }
 
-    // Aksi Tolak oleh Supervisor
     public function reject(Request $request, CutiRequest $cuti)
     {
+        $spv = auth()->user();
+
+        // Validasi: Cegah SPV menolak permohonan dari divisi lain
+        if ($cuti->user->divisi !== $spv->divisi) {
+            return back()->with('error', 'Anda tidak memiliki hak akses untuk memproses permohonan dari divisi lain.');
+        }
+
         if ($cuti->status !== 'pending_spv') {
             return back()->with('error', 'Permohonan sudah diproses.');
         }
@@ -64,10 +79,9 @@ class SupervisorCutiController extends Controller
             'catatan_spv.required' => 'Wajib memberikan alasan penolakan untuk karyawan.',
         ]);
 
-        // Berhenti di sini, tidak masuk ke HRD
         $cuti->update([
             'status'      => 'rejected_spv',
-            'spv_id'      => auth()->id(),
+            'spv_id'      => $spv->id,
             'catatan_spv' => $request->catatan_spv,
         ]);
 

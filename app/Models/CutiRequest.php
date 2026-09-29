@@ -14,6 +14,7 @@ class CutiRequest extends Model
         'tanggal_selesai',
         'jumlah_hari',
         'alasan',
+        'alamat_cuti',
         'kontak_darurat',
         'status',
         'hrd_id',

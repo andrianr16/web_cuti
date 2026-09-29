@@ -136,6 +136,16 @@
         <!-- BAGIAN 1: PERMOHONAN CUTI (KARYAWAN) -->
         <p style="margin: 3px 0 4px 0;">Yang bertanda tangan di bawah ini, saya :</p>
 
+        @php
+            $daftarPT = [
+                'supra'  => 'PT. Supra Raga Transport',
+                'joya'   => 'PT. Joya Hougan Lestari',
+                'minyak' => 'PT. Lestari Minyak Alam',
+                'seg'    => 'PT. Sarana Energi Graha',
+            ];
+            $namaPT = $daftarPT[strtolower($cuti->user->pabrik ?? '')] ?? strtoupper($cuti->user->pabrik ?? 'Lestari Group');
+        @endphp
+
         <table class="data-table">
             <tr>
                 <td style="width: 24%;">Nama</td>
@@ -143,9 +153,16 @@
                 <td class="line-bottom" style="width: 74%;"><strong>{{ $cuti->user->name }}</strong></td>
             </tr>
             <tr>
-                <td>Bagian / Divisi</td>
+                <td>Divisi / Jabatan</td>
                 <td>:</td>
-                <td class="line-bottom">{{ $cuti->user->divisi ?? '-' }}</td>
+                <td class="line-bottom">
+                    {{ $cuti->user->divisi ?? '-' }} / {{ $cuti->user->jabatan ?? '-' }}
+                </td>
+            </tr>
+            <tr>
+                <td>Unit Kerja / PT</td>
+                <td>:</td>
+                <td class="line-bottom"><strong>{{ $namaPT }}</strong></td>
             </tr>
             <tr>
                 <td>Dengan ini mengajukan untuk</td>
@@ -179,7 +196,8 @@
             <tr>
                 <td style="padding-left: 12px;">- Alamat</td>
                 <td>:</td>
-                <td class="line-bottom">{{ $cuti->alamat_cuti ?? '-' }}</td>
+                <!-- Mengambil alamat cuti dari form atau fallback profil karyawan -->
+                <td class="line-bottom">{{ !empty($cuti->alamat_cuti) ? $cuti->alamat_cuti : (!empty($cuti->user->alamat) ? $cuti->user->alamat : '-') }}</td>
             </tr>
             <tr>
                 <td style="padding-left: 12px;">- Telepon</td>
@@ -219,12 +237,13 @@
                 </td>
             </tr>
             <tr>
-                <td><u>{{ $cuti->spv->name ?? '( Kepala Bagian / Supervisor )' }}</u></td>
+                <!-- Menambahkan keterangan (Supervisor) di samping nama -->
+                <td><u><strong>{{ $cuti->spv->name ?? 'Supervisor' }} (Supervisor)</strong></u></td>
                 <td><u><strong>{{ $cuti->user->name }}</strong></u></td>
             </tr>
         </table>
 
-        <div style="font-size: 7.5pt; margin-top: 2px;">*) Coret yang tidak perlu</div>
+        <div style="font-size: 7.5pt; margin-top: 2px;">* Coret yang tidak perlu</div>
 
         <!-- BAGIAN 2: DIISI OLEH BAGIAN PERSONALIA (HRD) -->
         <div class="section-title">DIISI OLEH BAGIAN PERSONALIA</div>
@@ -245,7 +264,7 @@
             <tr>
                 <td>* Sisa hak cuti tahun sebelumnya</td>
                 <td>:</td>
-                <td class="line-bottom" style="width: 18%;">0</td>
+                <td class="line-bottom" style="width: 18%;">{{ $cuti->user->sisa_cuti_lalu ?? 0 }}</td>
                 <td style="width: 48%;">hari kerja</td>
             </tr>
             <tr>
@@ -308,7 +327,8 @@
                 </td>
             </tr>
             <tr>
-                <td><u>{{ $cuti->spv->name ?? '( Kepala Bagian / Supervisor )' }}</u></td>
+                <!-- Menambahkan keterangan (Supervisor) di bawah persetujuan personalia -->
+                <td><u><strong>{{ $cuti->spv->name ?? 'Supervisor' }} (Supervisor)</strong></u></td>
                 <td><u><strong>{{ $cuti->hrd->name ?? 'Bagian Personalia' }}</strong></u></td>
             </tr>
         </table>
