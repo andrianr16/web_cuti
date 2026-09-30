@@ -28,7 +28,19 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // Bersihkan riwayat URL sebelumnya agar tidak mengingat halaman akun lain
+        $request->session()->forget('url.intended');
+
+        // Arahkan langsung sesuai role akun yang login saat ini
+        $user = auth()->user();
+
+        if ($user->role === 'hrd') {
+            return redirect()->route('hrd.cuti.index');
+        } elseif ($user->role === 'supervisor') {
+            return redirect()->route('spv.cuti.index');
+        }
+
+        return redirect()->route('cuti.index');
     }
 
     /**
